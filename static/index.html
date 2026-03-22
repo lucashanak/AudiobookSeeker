@@ -15,6 +15,7 @@
     <button data-page="search" class="active">Search</button>
     <button data-page="library">Library</button>
     <button data-page="downloads">Downloads</button>
+    <button data-page="settings">Settings</button>
   </div>
 </nav>
 
@@ -55,6 +56,110 @@
   <div class="page" id="pageDownloads">
     <h1 class="page-title">Downloads</h1>
     <div id="downloadsContent"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="page" id="pageSettings">
+    <h1 class="page-title">Settings</h1>
+
+    <!-- Change Password (all users) -->
+    <div class="settings-section">
+      <div class="section-header" data-toggle="passwordSection">Change Password</div>
+      <div class="section-body" id="passwordSection">
+        <div class="setting-group">
+          <label>New Password</label>
+          <input type="password" id="newPassword" placeholder="Min 8 characters" class="setting-input">
+        </div>
+        <div class="setting-group">
+          <label>Confirm Password</label>
+          <input type="password" id="confirmPassword" placeholder="Confirm password" class="setting-input">
+        </div>
+        <button class="btn btn-primary" id="changePassBtn">Change Password</button>
+      </div>
+    </div>
+
+    <!-- Service Configuration (admin only) -->
+    <div class="settings-section admin-only" id="svcConfigSection">
+      <div class="section-header" data-toggle="svcConfigBody">Service Configuration</div>
+      <div class="section-body" id="svcConfigBody" style="display:none">
+        <h3 class="subsection-title">Prowlarr</h3>
+        <div class="setting-group">
+          <label>URL</label>
+          <input type="text" id="setProwlarrUrl" class="setting-input" placeholder="http://prowlarr:9696">
+        </div>
+        <div class="setting-group">
+          <label>API Key</label>
+          <input type="password" id="setProwlarrKey" class="setting-input" placeholder="API key">
+        </div>
+
+        <h3 class="subsection-title">qBittorrent</h3>
+        <div class="setting-group">
+          <label>URL</label>
+          <input type="text" id="setQbitUrl" class="setting-input" placeholder="http://qbittorrent:8081">
+        </div>
+        <div class="setting-group">
+          <label>Username</label>
+          <input type="text" id="setQbitUser" class="setting-input" placeholder="admin">
+        </div>
+        <div class="setting-group">
+          <label>Password</label>
+          <input type="password" id="setQbitPass" class="setting-input" placeholder="Password">
+        </div>
+        <div class="setting-group">
+          <label>Save Path (container perspective)</label>
+          <input type="text" id="setQbitSavePath" class="setting-input" placeholder="/data/audiobooks">
+        </div>
+
+        <h3 class="subsection-title">Audiobookshelf</h3>
+        <div class="setting-group">
+          <label>URL</label>
+          <input type="text" id="setAbsUrl" class="setting-input" placeholder="http://audiobookshelf:80">
+        </div>
+        <div class="setting-group">
+          <label>Username</label>
+          <input type="text" id="setAbsUser" class="setting-input" placeholder="admin">
+        </div>
+        <div class="setting-group">
+          <label>Password</label>
+          <input type="password" id="setAbsPass" class="setting-input" placeholder="Password">
+        </div>
+
+        <div class="setting-group">
+          <label>Audiobook Directory</label>
+          <input type="text" id="setAudiobookDir" class="setting-input" placeholder="/audiobooks">
+        </div>
+
+        <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+        <span id="settingsSaveStatus" class="save-status"></span>
+      </div>
+    </div>
+
+    <!-- User Management (admin only) -->
+    <div class="settings-section admin-only" id="userMgmtSection">
+      <div class="section-header" data-toggle="userMgmtBody">User Management</div>
+      <div class="section-body" id="userMgmtBody" style="display:none">
+        <div id="usersList"></div>
+        <h3 class="subsection-title" style="margin-top:16px">Add User</h3>
+        <div class="add-user-form">
+          <input type="text" id="newUsername" placeholder="Username" class="setting-input">
+          <input type="password" id="newUserPass" placeholder="Password (min 8)" class="setting-input">
+          <label class="checkbox-label">
+            <input type="checkbox" id="newUserAdmin"> Admin
+          </label>
+          <button class="btn btn-primary" id="addUserBtn">Add User</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disk Usage (admin only) -->
+    <div class="settings-section admin-only" id="diskUsageSection">
+      <div class="section-header" data-toggle="diskUsageBody">Disk Usage</div>
+      <div class="section-body" id="diskUsageBody" style="display:none">
+        <div id="diskUsageContent"></div>
+      </div>
+    </div>
+
+    <div class="settings-version" id="appVersion"></div>
   </div>
 </main>
 

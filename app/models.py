@@ -16,10 +16,16 @@ class DownloadRequest(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    prowlarr_url: str = ""
-    prowlarr_api_key: str = ""
-    qbit_url: str = ""
-    abs_url: str = ""
+    prowlarr_url: str | None = None
+    prowlarr_api_key: str | None = None
+    qbit_url: str | None = None
+    qbit_user: str | None = None
+    qbit_pass: str | None = None
+    abs_url: str | None = None
+    abs_user: str | None = None
+    abs_pass: str | None = None
+    qbit_save_path: str | None = None
+    audiobook_dir: str | None = None
 
 
 class CreateUserRequest(BaseModel):
