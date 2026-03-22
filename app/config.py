@@ -11,3 +11,4 @@ ABS_URL = os.environ.get("ABS_URL", "http://audiobookshelf:80")
 ABS_USER = os.environ.get("ABS_USER", "")
 ABS_PASS = os.environ.get("ABS_PASS", "")
 AUDIOBOOK_DIR = os.environ.get("AUDIOBOOK_DIR", "/audiobooks")
+QBIT_SAVE_PATH = os.environ.get("QBIT_SAVE_PATH", "")  # Path from qBittorrent's perspective

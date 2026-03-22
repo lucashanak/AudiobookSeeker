@@ -39,10 +39,12 @@ async def add_torrent(download_url: str = "", magnet_url: str = "",
     if not url:
         return {"error": "No download URL or magnet provided"}
 
-    # If it's a Prowlarr download URL, fetch the actual torrent/magnet
+    from app.config import QBIT_SAVE_PATH
     data = {"urls": url, "category": category}
     if save_path:
         data["savepath"] = save_path
+    elif QBIT_SAVE_PATH:
+        data["savepath"] = QBIT_SAVE_PATH
     else:
         data["savepath"] = AUDIOBOOK_DIR
 

@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
+import httpx
 from app.services import auth, audiobookshelf
+from app.config import ABS_URL
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
@@ -33,6 +36,30 @@ async def get_item(item_id: str, user: dict = Depends(auth.get_current_user)):
     if not item:
         raise HTTPException(404, "Item not found")
     return item
+
+
+@router.get("/items/{item_id}/cover")
+async def get_cover(item_id: str, request: Request):
+    """Proxy cover image from Audiobookshelf."""
+    try:
+        hdrs = await audiobookshelf._headers()
+        params = dict(request.query_params)
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{ABS_URL}/api/items/{item_id}/cover",
+                headers=hdrs, params=params,
+            )
+            if resp.status_code != 200:
+                raise HTTPException(404, "Cover not found")
+            return Response(
+                content=resp.content,
+                media_type=resp.headers.get("content-type", "image/jpeg"),
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(404, "Cover not found")
 
 
 @router.get("/items/{item_id}/progress")
