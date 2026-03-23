@@ -8,13 +8,18 @@ to render, fills credentials, and clicks Submit automatically.
 Calibre-Web HTML is rewritten to prefix asset paths with /calibre/.
 """
 
+import asyncio
+import logging
 import re
 
 import httpx
-from fastapi import APIRouter, Request, Response
+import websockets
+from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
 
 from app.services import settings
 from app.config import ABS_URL, ABS_USER, ABS_PASS, CALIBRE_USER, CALIBRE_PASS
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -97,7 +102,9 @@ def _abs_autologin_script() -> str:
     pwd_js = pwd.replace("\\", "\\\\").replace('"', '\\"')
     return f'''<script>
 (function() {{
-  if (sessionStorage.getItem("_abs_autologin")) return;
+  var key = "_abs_autologin_ts";
+  var last = parseInt(sessionStorage.getItem(key) || "0", 10);
+  if (Date.now() - last < 5000) return;
   var tries = 0;
   var timer = setInterval(function() {{
     tries++;
@@ -126,7 +133,7 @@ def _abs_autologin_script() -> str:
       uInput.dispatchEvent(new Event('input', {{bubbles: true}}));
       nSet.call(pInput, "{pwd_js}");
       pInput.dispatchEvent(new Event('input', {{bubbles: true}}));
-      sessionStorage.setItem("_abs_autologin", "1");
+      sessionStorage.setItem(key, String(Date.now()));
       setTimeout(function() {{ btn.click(); }}, 100);
     }}
   }}, 200);
@@ -162,6 +169,62 @@ async def proxy_abs(request: Request, path: str = ""):
     return resp
 
 
+# ABS WebSocket proxy for socket.io
+@router.websocket("/audiobookshelf/socket.io/")
+async def proxy_abs_ws(ws: WebSocket):
+    await ws.accept()
+    base = (settings.get("abs_url") or ABS_URL or "http://audiobookshelf:80").rstrip("/")
+    ws_base = re.sub(r"^http", "ws", base)
+    qs = str(ws.query_params) if ws.query_params else ""
+    upstream_url = f"{ws_base}/audiobookshelf/socket.io/?{qs}" if qs else f"{ws_base}/audiobookshelf/socket.io/"
+
+    # Forward cookies from the browser to upstream
+    cookies = ws.headers.get("cookie", "")
+    extra_headers = {"Cookie": cookies} if cookies else {}
+
+    try:
+        async with websockets.connect(
+            upstream_url,
+            additional_headers=extra_headers,
+            ping_interval=20,
+            ping_timeout=20,
+            close_timeout=5,
+        ) as upstream:
+
+            async def client_to_upstream():
+                try:
+                    while True:
+                        data = await ws.receive_text()
+                        await upstream.send(data)
+                except WebSocketDisconnect:
+                    pass
+
+            async def upstream_to_client():
+                try:
+                    async for msg in upstream:
+                        if isinstance(msg, str):
+                            await ws.send_text(msg)
+                        else:
+                            await ws.send_bytes(msg)
+                except websockets.ConnectionClosed:
+                    pass
+
+            done, pending = await asyncio.wait(
+                [asyncio.create_task(client_to_upstream()),
+                 asyncio.create_task(upstream_to_client())],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for t in pending:
+                t.cancel()
+    except Exception as e:
+        log.debug("ABS WebSocket proxy error: %s", e)
+    finally:
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+
 def _calibre_autologin_script() -> str:
     """JS that auto-fills and submits the Calibre-Web login form."""
     user = settings.get("calibre_user") or CALIBRE_USER or "admin"
@@ -170,12 +233,14 @@ def _calibre_autologin_script() -> str:
     pwd_js = pwd.replace("\\", "\\\\").replace('"', '\\"')
     return f'''<script>
 (function() {{
-  if (sessionStorage.getItem("_calibre_autologin")) return;
+  var key = "_calibre_autologin_ts";
+  var last = parseInt(sessionStorage.getItem(key) || "0", 10);
+  if (Date.now() - last < 5000) return;
   var uInput = document.querySelector('#username');
   var pInput = document.querySelector('#password');
   var btn = document.querySelector('button[name="submit"], button[type="submit"]');
   if (uInput && pInput && btn) {{
-    sessionStorage.setItem("_calibre_autologin", "1");
+    sessionStorage.setItem(key, String(Date.now()));
     uInput.value = "{user_js}";
     pInput.value = "{pwd_js}";
     btn.click();

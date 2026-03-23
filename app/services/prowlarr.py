@@ -1,4 +1,6 @@
 """Prowlarr API client — search torrent indexers."""
+import re
+
 import httpx
 
 from app.config import PROWLARR_URL, PROWLARR_API_KEY
@@ -7,9 +9,26 @@ from app.config import PROWLARR_URL, PROWLARR_API_KEY
 CAT_AUDIO = "3000"
 CAT_BOOKS = "7000"
 
+# Known audiobook subcategories across indexers
+_AUDIOBOOK_CATS = {3030, 100024}
+# Known music subcategories to exclude from audiobook results
+_MUSIC_CATS = {3010, 3020, 3040, 100002, 100101, 104627}
+# Known ebook subcategories across indexers
+_EBOOK_CATS = {7020, 100601}
+# Non-book subcategories that appear under 7000 (movies, etc.)
+_NOT_BOOK_CATS = {7050, 100699}
+# Regex to detect video/movie releases misclassified as books
+_VIDEO_RE = re.compile(
+    r"(?:1080p|720p|2160p|4K|WEB-DL|WEBRip|BluRay|BDRip|HDRip|"
+    r"x264|x265|HEVC|H\.?264|H\.?265|DUAL|DTS|AAC\.?5\.1|"
+    r"REMUX|CAM|TS|DVDRip|HDTV)",
+    re.IGNORECASE,
+)
+
 
 async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
-                 min_size: int = 0) -> list[dict]:
+                 min_size: int = 0, audiobook_only: bool = False,
+                 ebook_only: bool = False) -> list[dict]:
     """Search Prowlarr for torrents in given category."""
     if not PROWLARR_API_KEY:
         return []
@@ -28,13 +47,23 @@ async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
         return []
 
     results = []
-    for item in raw[:limit * 2]:
+    for item in raw[:limit * 3]:
         size = item.get("size", 0)
         if min_size and size < min_size:
             continue
-        cats = [c.get("id", 0) for c in item.get("categories", [])]
+        cats = {c.get("id", 0) for c in item.get("categories", [])}
+        title = item.get("title", "")
+        # Filter out music when searching for audiobooks
+        if audiobook_only and cats & _MUSIC_CATS and not cats & _AUDIOBOOK_CATS:
+            continue
+        # Filter out movies/video when searching for ebooks
+        if ebook_only:
+            if cats & _NOT_BOOK_CATS:
+                continue
+            if _VIDEO_RE.search(title):
+                continue
         results.append({
-            "title": item.get("title", ""),
+            "title": title,
             "indexer": item.get("indexer", ""),
             "size": size,
             "seeders": item.get("seeders", 0),
@@ -42,7 +71,7 @@ async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
             "download_url": item.get("downloadUrl", ""),
             "magnet_url": item.get("magnetUrl", ""),
             "info_url": item.get("infoUrl", ""),
-            "categories": cats,
+            "categories": list(cats),
             "age_days": item.get("age", 0),
             "grabs": item.get("grabs", 0),
         })

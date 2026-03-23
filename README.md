@@ -49,12 +49,12 @@ Admin panel with password management, service configuration, user management, an
 
 ## Features
 
-- **Audiobook & Ebook Search** — Search multiple torrent trackers via Prowlarr (audio category 3000, books category 7000)
+- **Audiobook & Ebook Search** — Search multiple torrent trackers via Prowlarr with smart filtering (audiobooks only from audio results, movies/video excluded from ebook results)
 - **One-Click Downloads** — Send torrents to qBittorrent with automatic save path routing
 - **Audiobookshelf Integration** — Browse your audiobook library with covers, metadata, and automatic library scanning after downloads
 - **Ebook File Browser** — Browse downloaded ebooks and download them directly to your phone/device
 - **Calibre-Web Integration** — Embedded Calibre-Web reader accessible from the app
-- **Embedded Players** — Audiobookshelf and Calibre-Web are reverse-proxied with automatic login — no separate auth needed
+- **Embedded Players** — Audiobookshelf and Calibre-Web are reverse-proxied with automatic login — no separate auth needed. Full WebSocket proxy support for real-time ABS features (notifications, listening sync)
 - **User Management** — Admin can create/delete users, each user can change their own password
 - **Settings Panel** — Configure all service URLs and API keys from the UI
 - **Disk Usage** — Monitor and manage storage, delete audiobook folders with automatic ABS library scan
@@ -179,7 +179,7 @@ Audiobookshelf **must** be configured with base URL `/audiobookshelf/` for the p
 
 ## Tech Stack
 
-- **Backend:** Python 3.11, FastAPI, httpx
+- **Backend:** Python 3.11, FastAPI, httpx, websockets
 - **Frontend:** Vanilla JavaScript SPA, CSS
 - **Container:** Docker, Docker Compose
 - **Services:** Prowlarr, qBittorrent, Audiobookshelf, Calibre-Web
