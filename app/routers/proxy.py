@@ -115,14 +115,9 @@ def _abs_autologin_script() -> str:
     // Username input is the text input right before password
     var uInput = pInput.parentElement.querySelector('input[type="text"]')
       || pInput.closest('div').parentElement.querySelector('input[type="text"]');
-    // Find Submit button near the form
-    var btn = null;
-    var btns = document.querySelectorAll('button');
-    for (var i = 0; i < btns.length; i++) {{
-      if (btns[i].textContent.trim().toLowerCase() === 'submit') {{
-        btn = btns[i]; break;
-      }}
-    }}
+    // Find Submit button by type attribute or text
+    var btn = document.querySelector('button[type="submit"]')
+      || document.querySelector('form button');
     if (uInput && pInput && btn) {{
       clearInterval(timer);
       // Set values via native setter to trigger Vue reactivity

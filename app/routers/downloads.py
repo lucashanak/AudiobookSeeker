@@ -14,17 +14,12 @@ async def start_download(req: DownloadRequest, user: dict = Depends(auth.get_cur
         username=user["username"],
         type=req.type,
     )
-    # Use different save path and category for ebooks
+    # Category determines save path (configured in qBittorrent)
     category = "ebooks" if req.type == "ebook" else "audiobooks"
-    save_path = ""
-    if req.type == "ebook":
-        from app.config import QBIT_EBOOK_SAVE_PATH, EBOOK_DIR
-        save_path = QBIT_EBOOK_SAVE_PATH or EBOOK_DIR
 
     result = await qbittorrent.add_torrent(
         download_url=req.download_url,
         magnet_url=req.magnet_url,
-        save_path=save_path,
         category=category,
     )
     if "error" in result:
