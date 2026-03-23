@@ -1,4 +1,5 @@
 """Prowlarr API client — search torrent indexers."""
+import asyncio
 import re
 
 import httpx
@@ -8,6 +9,8 @@ from app.config import PROWLARR_URL, PROWLARR_API_KEY
 # Prowlarr categories
 CAT_AUDIO = "3000"
 CAT_BOOKS = "7000"
+# Extra CZ/SK book categories not mapped under 7000 by Prowlarr
+_EXTRA_BOOK_CATS = ["100023", "100018"]  # SkTorrent Knihy, TreZzoR Knihy CZ/SK
 
 # Known audiobook subcategories across indexers
 _AUDIOBOOK_CATS = {3030, 100024}
@@ -26,12 +29,8 @@ _VIDEO_RE = re.compile(
 )
 
 
-async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
-                 min_size: int = 0, audiobook_only: bool = False,
-                 ebook_only: bool = False) -> list[dict]:
-    """Search Prowlarr for torrents in given category."""
-    if not PROWLARR_API_KEY:
-        return []
+async def _fetch(client: httpx.AsyncClient, query: str, category: str) -> list:
+    """Fetch search results from Prowlarr for a single category."""
     params = {
         "query": query,
         "categories": category,
@@ -39,12 +38,37 @@ async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
         "apikey": PROWLARR_API_KEY,
     }
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(f"{PROWLARR_URL}/api/v1/search", params=params)
-            resp.raise_for_status()
-            raw = resp.json()
+        resp = await client.get(f"{PROWLARR_URL}/api/v1/search", params=params)
+        resp.raise_for_status()
+        return resp.json()
     except Exception:
         return []
+
+
+async def search(query: str, category: str = CAT_AUDIO, limit: int = 30,
+                 min_size: int = 0, audiobook_only: bool = False,
+                 ebook_only: bool = False) -> list[dict]:
+    """Search Prowlarr for torrents in given category."""
+    if not PROWLARR_API_KEY:
+        return []
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        # For ebooks, also search CZ/SK book categories in parallel
+        if ebook_only:
+            tasks = [_fetch(client, query, category)]
+            for extra in _EXTRA_BOOK_CATS:
+                tasks.append(_fetch(client, query, extra))
+            all_results = await asyncio.gather(*tasks)
+            raw = []
+            seen_guids = set()
+            for batch in all_results:
+                for item in batch:
+                    guid = item.get("guid", "")
+                    if guid not in seen_guids:
+                        seen_guids.add(guid)
+                        raw.append(item)
+        else:
+            raw = await _fetch(client, query, category)
 
     results = []
     for item in raw[:limit * 3]:
